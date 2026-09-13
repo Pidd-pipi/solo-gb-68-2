@@ -101,7 +101,7 @@ func (s *IrrigationService) GetWaterUsageStats(zoneID *uint, startTime, endTime 
 	var stats WaterUsageStats
 	query := irrigationLogFilter{zoneID: zoneID, startTime: startTime, endTime: endTime}.apply(
 		database.DB.Model(&models.IrrigationLog{}).
-			Select("COALESCE(SUM(water_usage), 0) as total_usage, COALESCE(COUNT(*), 0) as irrigation_count").
+			Select("COALESCE(SUM(water_usage), 0) as total_usage, COALESCE(COUNT(*), 0) as irrigation_count, COALESCE(SUM(EXTRACT(EPOCH FROM (end_time - start_time)))::bigint, 0) as duration").
 			Where("status = ?", models.ExecutionStatusSuccess),
 	)
 
