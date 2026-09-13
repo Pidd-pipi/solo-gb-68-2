@@ -21,6 +21,28 @@ func NewIrrigationController() *IrrigationController {
 	}
 }
 
+// parseOptionalZoneID 解析可选的 zone_id 查询参数，未提供时返回 nil。
+func parseOptionalZoneID(ctx *gin.Context) *uint {
+	if zoneIDStr := ctx.Query("zone_id"); zoneIDStr != "" {
+		id, _ := strconv.ParseUint(zoneIDStr, 10, 32)
+		idUint := uint(id)
+		return &idUint
+	}
+	return nil
+}
+
+// parseOptionalTimeRange 解析可选的 start_time/end_time 查询参数（RFC3339），
+// 未提供或解析失败时对应值为零值。
+func parseOptionalTimeRange(ctx *gin.Context) (startTime, endTime time.Time) {
+	if startStr := ctx.Query("start_time"); startStr != "" {
+		startTime, _ = time.Parse(time.RFC3339, startStr)
+	}
+	if endStr := ctx.Query("end_time"); endStr != "" {
+		endTime, _ = time.Parse(time.RFC3339, endStr)
+	}
+	return startTime, endTime
+}
+
 // ManualIrrigate godoc
 // @Summary 手动灌溉
 // @Description 触发手动灌溉
@@ -63,20 +85,8 @@ func (c *IrrigationController) ManualIrrigate(ctx *gin.Context) {
 // @Success 200 {array} models.IrrigationLog
 // @Router /api/irrigation/history [get]
 func (c *IrrigationController) GetHistory(ctx *gin.Context) {
-	var zoneID *uint
-	if zoneIDStr := ctx.Query("zone_id"); zoneIDStr != "" {
-		id, _ := strconv.ParseUint(zoneIDStr, 10, 32)
-		idUint := uint(id)
-		zoneID = &idUint
-	}
-
-	var startTime, endTime time.Time
-	if startStr := ctx.Query("start_time"); startStr != "" {
-		startTime, _ = time.Parse(time.RFC3339, startStr)
-	}
-	if endStr := ctx.Query("end_time"); endStr != "" {
-		endTime, _ = time.Parse(time.RFC3339, endStr)
-	}
+	zoneID := parseOptionalZoneID(ctx)
+	startTime, endTime := parseOptionalTimeRange(ctx)
 
 	limit := 100
 	if limitStr := ctx.Query("limit"); limitStr != "" {
@@ -104,20 +114,8 @@ func (c *IrrigationController) GetHistory(ctx *gin.Context) {
 // @Success 200 {object} services.WaterUsageStats
 // @Router /api/statistics/water-usage [get]
 func (c *IrrigationController) GetWaterUsageStats(ctx *gin.Context) {
-	var zoneID *uint
-	if zoneIDStr := ctx.Query("zone_id"); zoneIDStr != "" {
-		id, _ := strconv.ParseUint(zoneIDStr, 10, 32)
-		idUint := uint(id)
-		zoneID = &idUint
-	}
-
-	var startTime, endTime time.Time
-	if startStr := ctx.Query("start_time"); startStr != "" {
-		startTime, _ = time.Parse(time.RFC3339, startStr)
-	}
-	if endStr := ctx.Query("end_time"); endStr != "" {
-		endTime, _ = time.Parse(time.RFC3339, endStr)
-	}
+	zoneID := parseOptionalZoneID(ctx)
+	startTime, endTime := parseOptionalTimeRange(ctx)
 
 	stats, err := c.irrigationService.GetWaterUsageStats(zoneID, startTime, endTime)
 	if err != nil {
@@ -139,15 +137,11 @@ func (c *IrrigationController) GetWaterUsageStats(ctx *gin.Context) {
 // @Success 200 {array} services.ZoneWaterUsage
 // @Router /api/statistics/zone-usage [get]
 func (c *IrrigationController) GetZoneWaterUsage(ctx *gin.Context) {
-	var startTime, endTime time.Time
-	if startStr := ctx.Query("start_time"); startStr != "" {
-		startTime, _ = time.Parse(time.RFC3339, startStr)
-	} else {
+	startTime, endTime := parseOptionalTimeRange(ctx)
+	if ctx.Query("start_time") == "" {
 		startTime = time.Now().AddDate(0, 0, -7)
 	}
-	if endStr := ctx.Query("end_time"); endStr != "" {
-		endTime, _ = time.Parse(time.RFC3339, endStr)
-	} else {
+	if ctx.Query("end_time") == "" {
 		endTime = time.Now()
 	}
 
