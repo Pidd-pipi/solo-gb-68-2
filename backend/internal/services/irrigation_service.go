@@ -57,6 +57,9 @@ func (s *IrrigationService) CompleteIrrigation(logID uint, success bool, waterUs
 	now := time.Now()
 	updates := map[string]interface{}{
 		"end_time": now,
+		// 同时保存实际灌溉秒数：由数据库在同一条 UPDATE 内原子计算，
+		// 口径与统计查询的 EXTRACT(EPOCH FROM (end_time - start_time)) 一致，保证记录字段与统计结果相同。
+		"duration": gorm.Expr("EXTRACT(EPOCH FROM (?::timestamp - start_time))::integer", now),
 	}
 
 	if success {
